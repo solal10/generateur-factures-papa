@@ -290,7 +290,7 @@ class InvoiceFillerGUI:
         fields_frame = ttk.Frame(container_frame)
         fields_frame.pack(side=tk.RIGHT, padx=(10, 0))
         
-        # Totals fields (removed "en lettres" field)
+        # Totals fields 
         totals_config = [
             ("total_hors_taxe", "Total H.T."),
             ("tva_5_5_pourcent", "TVA 5.5%"),
@@ -299,6 +299,7 @@ class InvoiceFillerGUI:
             ("total_net_de_taxes", "Total Net de Taxes"),
             ("acompte_percu", "Acompte perçu"),
             ("reste_a_payer", "Reste à payer"),
+            ("en_votre_aimable_reglement_de_la_somme_de", "En lettres"),
         ]
         
         for field_name, label_text in totals_config:
@@ -484,6 +485,7 @@ class InvoiceFillerGUI:
             "total_net_de_taxes": (470, 552),
             "acompte_percu": (470, 572),
             "reste_a_payer": (470, 610),
+            "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
         }
         
         # Add line items positions - fill from top to bottom
