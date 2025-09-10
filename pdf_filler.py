@@ -299,7 +299,7 @@ class InvoiceFillerGUI:
             ("total_net_de_taxes", "Total Net de Taxes"),
             ("acompte_percu", "Acompte perçu"),
             ("reste_a_payer", "Reste à payer"),
-            ("en_votre_aimable_reglement_de_la_somme_de", "En lettres"),
+            ("en_votre_aimable_reglement_de_la_somme_de", "Confirmation somme"),
         ]
         
         for field_name, label_text in totals_config:
@@ -441,10 +441,33 @@ class InvoiceFillerGUI:
             value = var.get().strip()
             if value:
                 escaped_value = value.replace('"', '\\"').replace('\\', '\\\\')
-                # Use the same positioning as acroform.py
                 x, y = self.get_field_position(field_name)
                 if x is not None and y is not None:
-                    script_lines.append(f'c.drawString({x}, page_height - {y}, "{escaped_value}")')
+                    # Handle text wrapping for libelle fields
+                    if field_name.startswith("libelle_") and len(value) > 35:
+                        # Split long libelle text into multiple lines
+                        script_lines.append(f'# Handle long libelle text for {field_name}')
+                        script_lines.append(f'text = "{escaped_value}"')
+                        script_lines.append(f'max_width = 225  # Maximum width for libelle field')
+                        script_lines.append(f'words = text.split(" ")')
+                        script_lines.append(f'lines = []')
+                        script_lines.append(f'current_line = ""')
+                        script_lines.append(f'for word in words:')
+                        script_lines.append(f'    test_line = current_line + (" " if current_line else "") + word')
+                        script_lines.append(f'    if c.stringWidth(test_line, "Helvetica", 9) <= max_width:')
+                        script_lines.append(f'        current_line = test_line')
+                        script_lines.append(f'    else:')
+                        script_lines.append(f'        if current_line:')
+                        script_lines.append(f'            lines.append(current_line)')
+                        script_lines.append(f'        current_line = word')
+                        script_lines.append(f'if current_line:')
+                        script_lines.append(f'    lines.append(current_line)')
+                        script_lines.append(f'# Draw each line with 12pt spacing')
+                        script_lines.append(f'for i, line in enumerate(lines):')
+                        script_lines.append(f'    c.drawString({x}, page_height - {y} - (i * 12), line)')
+                    else:
+                        # Normal single line text
+                        script_lines.append(f'c.drawString({x}, page_height - {y}, "{escaped_value}")')
         
         script_lines.append("")
         script_lines.append("c.save()")
