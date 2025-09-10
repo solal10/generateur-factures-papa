@@ -158,7 +158,7 @@ class InvoiceFillerGUI:
             # Special styling for header fields (invoice number and date)
             if field_name in ["numero_de_facture", "date"]:
                 entry = tk.Entry(row_frame, textvariable=var, width=width, 
-                               bg="white", fg="black", insertbackground="black")
+                               bg="darkblue", fg="white", insertbackground="white")
             else:
                 entry = ttk.Entry(row_frame, textvariable=var, width=width)
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -433,7 +433,15 @@ class InvoiceFillerGUI:
         script_lines.append("")
         script_lines.append("# Create canvas for text overlay")
         script_lines.append("c = canvas.Canvas(overlay_path, pagesize=(page_width, page_height))")
-        script_lines.append("c.setFont('Helvetica', 9)")
+        script_lines.append("")
+        script_lines.append("# Register Roboto font (using Helvetica as fallback)")
+        script_lines.append("try:")
+        script_lines.append("    from reportlab.pdfbase import pdfutils")
+        script_lines.append("    from reportlab.pdfbase.ttfonts import TTFont")
+        script_lines.append("    # Try to use Roboto, fallback to Helvetica")
+        script_lines.append("    font_name = 'Helvetica'  # Default fallback")
+        script_lines.append("except:")
+        script_lines.append("    font_name = 'Helvetica'")
         script_lines.append("")
         
         # Generate text placement for each filled field
@@ -443,6 +451,10 @@ class InvoiceFillerGUI:
                 escaped_value = value.replace('"', '\\"').replace('\\', '\\\\')
                 x, y = self.get_field_position(field_name)
                 if x is not None and y is not None:
+                    # Determine font size based on field position
+                    font_size = self.get_font_size_for_field(field_name)
+                    script_lines.append(f'c.setFont(font_name, {font_size})')
+                    
                     # Handle text wrapping for libelle fields
                     if field_name.startswith("libelle_") and len(value) > 35:
                         # Split long libelle text into multiple lines
@@ -454,7 +466,7 @@ class InvoiceFillerGUI:
                         script_lines.append(f'current_line = ""')
                         script_lines.append(f'for word in words:')
                         script_lines.append(f'    test_line = current_line + (" " if current_line else "") + word')
-                        script_lines.append(f'    if c.stringWidth(test_line, "Helvetica", 9) <= max_width:')
+                        script_lines.append(f'    if c.stringWidth(test_line, font_name, {font_size}) <= max_width:')
                         script_lines.append(f'        current_line = test_line')
                         script_lines.append(f'    else:')
                         script_lines.append(f'        if current_line:')
@@ -486,6 +498,35 @@ class InvoiceFillerGUI:
         script_lines.append("print('PDF generated successfully!')")
         
         return "\n".join(script_lines)
+    
+    def get_font_size_for_field(self, field_name):
+        """Get font size based on field position in form"""
+        # Fields before table (size 12): header and client info fields
+        before_table_fields = [
+            "numero_de_facture", "date", "nom", "adresse", "ville", 
+            "num_rc", "tva", "document", "lieu_d_intervention", 
+            "debut_du_chantier", "fin_du_chantier"
+        ]
+        
+        # Table and after table fields (size 8): libelle, quantities, totals
+        table_and_after_fields = [
+            "libelle_", "quantite_", "prix_unitaire_", "total_net_",
+            "total_hors_taxe", "tva_5_5_pourcent", "tva_10_pourcent", 
+            "tva_20_pourcent", "total_net_de_taxes", "acompte_percu", 
+            "reste_a_payer", "en_votre_aimable_reglement_de_la_somme_de"
+        ]
+        
+        # Check if field is in table or after table (size 8)
+        for pattern in table_and_after_fields:
+            if field_name.startswith(pattern) or field_name == pattern:
+                return 8
+                
+        # Check if field is before table (size 12)  
+        if field_name in before_table_fields:
+            return 12
+            
+        # Default fallback
+        return 9
     
     def get_field_position(self, field_name):
         """Get the position for a field based on acroform.py positioning"""
