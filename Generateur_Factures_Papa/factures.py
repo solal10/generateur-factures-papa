@@ -69,38 +69,78 @@ class InvoiceFillerGUI:
         # Store canvas reference for scrolling
         self.canvas = canvas
         
-        # Bind scroll events
-        root.bind_all("<MouseWheel>", self._on_scroll)
-        
-    def _on_scroll(self, event):
-        try:
-            delta = event.delta
-            if delta < -32768:
-                delta = delta + 65536
-            elif delta > 32768:
-                delta = delta - 65536
-            
-            scroll_amount = -delta * 0.3
-            scroll_amount = max(-30, min(30, scroll_amount))
-            
-            if scroll_amount != 0:
-                current = self.canvas.yview()[0]
-                canvas_height = self.canvas.winfo_height()
-                scroll_region = self.canvas.cget('scrollregion')
-                if scroll_region:
-                    total_height = int(scroll_region.split()[3])
-                    if total_height > canvas_height:
-                        scroll_fraction = scroll_amount / total_height
-                        new_pos = current + scroll_fraction
-                        new_pos = max(0.0, min(1.0, new_pos))
-                        self.canvas.yview_moveto(new_pos)
+        # Optimized scrolling for Mac with smooth motion
+        def _on_scroll(event):
+            try:
+                if hasattr(event, 'delta') and event.delta is not None:
+                    delta = event.delta
+                    
+                    # Handle large negative values (two's complement issues)
+                    if delta < -32768:
+                        delta = delta + 65536
+                    elif delta > 32768:
+                        delta = delta - 65536
+                    
+                    # Use fractional scrolling for smoothness
+                    scroll_amount = -delta * 0.3  # Smooth scaling factor
+                    
+                    # Clamp to reasonable values
+                    scroll_amount = max(-30, min(30, scroll_amount))
+                    
+                    # Use yview_moveto for pixel-perfect scrolling
+                    if scroll_amount != 0:
+                        current = self.canvas.yview()[0]
+                        canvas_height = self.canvas.winfo_height()
+                        scroll_region = self.canvas.cget('scrollregion')
+                        if scroll_region:
+                            total_height = int(scroll_region.split()[3])
+                            if total_height > canvas_height:
+                                # Calculate new position
+                                scroll_fraction = scroll_amount / total_height
+                                new_pos = current + scroll_fraction
+                                new_pos = max(0.0, min(1.0, new_pos))
+                                self.canvas.yview_moveto(new_pos)
+                    
+                    return "break"  # Prevent default scrolling
+            except Exception:
+                pass
             
             return "break"
-        except Exception:
+        
+        # Bind scroll events globally to catch all scroll attempts
+        root.bind_all("<MouseWheel>", _on_scroll)
+        root.bind_all("<Button-4>", lambda e: _on_scroll(e))
+        root.bind_all("<Button-5>", lambda e: _on_scroll(e))
+        
+        # Bind TouchpadScroll for Mac trackpads
+        try:
+            root.bind_all("<TouchpadScroll>", _on_scroll)
+        except:
             pass
         
-        return "break"
-    
+        # Enable keyboard scrolling (only when not in entry fields)
+        def _on_key(event):
+            # Don't scroll if focus is on an Entry widget
+            focused_widget = self.root.focus_get()
+            if isinstance(focused_widget, ttk.Entry):
+                return
+                
+            if event.keysym in ['Up', 'k']:
+                self.canvas.yview_scroll(-3, "units")
+                return "break"
+            elif event.keysym in ['Down', 'j']:
+                self.canvas.yview_scroll(3, "units")
+                return "break"
+            elif event.keysym in ['Page_Up']:
+                self.canvas.yview_scroll(-10, "units")
+                return "break"
+            elif event.keysym in ['Page_Down']:
+                self.canvas.yview_scroll(10, "units")
+                return "break"
+            # Remove space from scroll triggers to allow typing in fields
+        
+        root.bind("<KeyPress>", _on_key)
+        
     def create_field_group(self, parent, title, fields_config):
         """Create a group of fields with a title"""
         group_frame = ttk.LabelFrame(parent, text=title, padding=10)
@@ -114,7 +154,13 @@ class InvoiceFillerGUI:
             label.pack(side=tk.LEFT, padx=(0, 10))
             
             var = tk.StringVar(value=default_value)
-            entry = ttk.Entry(row_frame, textvariable=var, width=width)
+            
+            # Special styling for header fields (invoice number and date)
+            if field_name in ["numero_de_facture", "date"]:
+                entry = tk.Entry(row_frame, textvariable=var, width=width, 
+                               bg="white", fg="black", insertbackground="black")
+            else:
+                entry = ttk.Entry(row_frame, textvariable=var, width=width)
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
             
             self.fields[field_name] = var
@@ -153,29 +199,33 @@ class InvoiceFillerGUI:
         items_frame = ttk.LabelFrame(parent, text="Articles de la facture", padding=10)
         items_frame.pack(fill=tk.X, pady=(0, 15))
         
-        # Headers
+        # Create a grid-based layout for better alignment
+        # Headers row
         headers_frame = ttk.Frame(items_frame)
         headers_frame.pack(fill=tk.X, pady=(0, 5))
         
+        # Use grid for precise alignment with padding to shift right
         ttk.Label(headers_frame, text="Libellé", font=("Arial", 9, "bold")).grid(row=0, column=0, padx=(2, 2), sticky="w")
         ttk.Label(headers_frame, text="Qté", font=("Arial", 9, "bold")).grid(row=0, column=1, padx=(8, 2), sticky="w")
         ttk.Label(headers_frame, text="Prix Unit.", font=("Arial", 9, "bold")).grid(row=0, column=2, padx=(8, 2), sticky="w")
         ttk.Label(headers_frame, text="Total", font=("Arial", 9, "bold")).grid(row=0, column=3, padx=(8, 2), sticky="w")
         
-        headers_frame.grid_columnconfigure(0, minsize=265)
-        headers_frame.grid_columnconfigure(1, minsize=80)
-        headers_frame.grid_columnconfigure(2, minsize=95)
-        headers_frame.grid_columnconfigure(3, minsize=95)
+        # Configure column widths to match entry fields
+        headers_frame.grid_columnconfigure(0, minsize=265)  # Libellé column (increased)
+        headers_frame.grid_columnconfigure(1, minsize=80)   # Qté column  
+        headers_frame.grid_columnconfigure(2, minsize=95)   # Prix Unit. column
+        headers_frame.grid_columnconfigure(3, minsize=95)   # Total column
         
         # Create 4 rows for invoice items
         for i in range(1, 5):
             row_frame = ttk.Frame(items_frame)
             row_frame.pack(fill=tk.X, pady=1)
             
-            # Libellé
+            # Use grid for entries to match header alignment
+            # Libellé - with text wrapping/truncation
             libelle_var = tk.StringVar()
             libelle_entry = ttk.Entry(row_frame, textvariable=libelle_var, width=35)
-            libelle_entry.grid(row=0, column=0, padx=(0, 2), sticky="ew")
+            libelle_entry.grid(row=0, column=0, padx=(0, 2), sticky="w")  # Use 'w' instead of 'ew'
             self.fields[f"libelle_{i}"] = libelle_var
             
             # Quantité
@@ -190,16 +240,17 @@ class InvoiceFillerGUI:
             prix_entry.grid(row=0, column=2, padx=(6, 2), sticky="ew")
             self.fields[f"prix_unitaire_{i}"] = prix_var
             
-            # Total
+            # Total (auto-calculated)
             total_var = tk.StringVar()
             total_entry = ttk.Entry(row_frame, textvariable=total_var, width=12)
             total_entry.grid(row=0, column=3, padx=(6, 2), sticky="ew")
             self.fields[f"total_net_{i}"] = total_var
             
-            row_frame.grid_columnconfigure(0, minsize=265)
-            row_frame.grid_columnconfigure(1, minsize=80)
-            row_frame.grid_columnconfigure(2, minsize=95)
-            row_frame.grid_columnconfigure(3, minsize=95)
+            # Configure grid columns with proper sizing
+            row_frame.grid_columnconfigure(0, minsize=265, weight=0)  # Fixed width for libelle
+            row_frame.grid_columnconfigure(1, minsize=80, weight=0)
+            row_frame.grid_columnconfigure(2, minsize=95, weight=0)
+            row_frame.grid_columnconfigure(3, minsize=95, weight=1)   # Allow last column to expand
             
             # Bind calculation
             def make_calculator(i):
@@ -255,6 +306,7 @@ class InvoiceFillerGUI:
     def auto_calculate_totals(self):
         """Auto-calculate all totals and taxes"""
         try:
+            # Calculate total HT
             total_ht = 0
             for i in range(1, 5):
                 total_str = self.fields[f"total_net_{i}"].get()
@@ -263,6 +315,7 @@ class InvoiceFillerGUI:
             
             self.fields["total_hors_taxe"].set(f"{total_ht:.2f}")
             
+            # Calculate taxes (you can modify these rates as needed)
             tva_5_5 = float(self.fields["tva_5_5_pourcent"].get() or 0)
             tva_10 = float(self.fields["tva_10_pourcent"].get() or 0)
             tva_20 = float(self.fields["tva_20_pourcent"].get() or 0)
@@ -270,6 +323,7 @@ class InvoiceFillerGUI:
             total_ttc = total_ht + tva_5_5 + tva_10 + tva_20
             self.fields["total_net_de_taxes"].set(f"{total_ttc:.2f}")
             
+            # Calculate remaining amount
             acompte = float(self.fields["acompte_percu"].get() or 0)
             reste = total_ttc - acompte
             self.fields["reste_a_payer"].set(f"{reste:.2f}")
@@ -281,28 +335,37 @@ class InvoiceFillerGUI:
         """Clear all form fields"""
         if messagebox.askyesno("Confirmer", "Êtes-vous sûr de vouloir effacer tous les champs ?"):
             for field_name, var in self.fields.items():
-                if field_name != "date":
+                if field_name != "date":  # Keep current date
                     var.set("")
     
     def generate_pdf(self):
         """Generate the PDF invoice"""
         try:
+            # Check if required fields are filled
             if not self.fields["numero_de_facture"].get().strip():
                 messagebox.showwarning("Champ manquant", "Le numéro de facture est obligatoire.")
                 return
             
+            # Generate the filled form Python script
             script_content = self.create_filled_form_script()
             
+            # Write temporary script
             with open("temp_filled_form.py", "w", encoding="utf-8") as f:
                 f.write(script_content)
             
+            # Execute the script
             result = subprocess.run(["python", "temp_filled_form.py"], 
                                   cwd=".", capture_output=True, text=True)
             
             if result.returncode == 0:
+                # Clean up temp file
                 os.remove("temp_filled_form.py")
+                # Get the filename that was generated
                 invoice_number = self.fields["numero_de_facture"].get().strip()
-                output_filename = f"FACTURE_{invoice_number}.pdf" if invoice_number else "FACTURE_SANS_NUMERO.pdf"
+                if invoice_number:
+                    output_filename = f"FACTURE_{invoice_number}.pdf"
+                else:
+                    output_filename = "FACTURE_SANS_NUMERO.pdf"
                 
                 messagebox.showinfo("Succès", 
                                   f"La facture PDF a été générée avec succès!\n\nFichier: {output_filename}")
@@ -316,32 +379,40 @@ class InvoiceFillerGUI:
     def create_filled_form_script(self):
         """Create a script that overlays text on the existing acroform PDF"""
         script_lines = []
+        script_lines.append("# Generated filled form script")
         script_lines.append("from reportlab.pdfgen import canvas")
         script_lines.append("from reportlab.lib.pagesizes import A4")
         script_lines.append("from pdfrw import PdfReader, PdfWriter, PageMerge")
         script_lines.append("")
-        
+        # Get invoice number for filename
         invoice_number = self.fields["numero_de_facture"].get().strip()
-        output_filename = f"FACTURE_{invoice_number}.pdf" if invoice_number else "FACTURE_SANS_NUMERO.pdf"
+        if invoice_number:
+            output_filename = f"FACTURE_{invoice_number}.pdf"
+        else:
+            output_filename = "FACTURE_SANS_NUMERO.pdf"
         
         script_lines.append('bg_path = "MODELE FACTURE GLOBAL SOLUTIONS A REMPLIR.pdf"')
         script_lines.append('overlay_path = "_text_overlay.pdf"')
         script_lines.append(f'out_path = "{output_filename}"')
         script_lines.append("")
+        script_lines.append("# Read background PDF to get dimensions")
         script_lines.append("bg_pdf = PdfReader(bg_path)")
         script_lines.append("page = bg_pdf.pages[0]")
         script_lines.append("llx, lly, urx, ury = [float(x) for x in page.MediaBox]")
         script_lines.append("page_width = urx - llx")
         script_lines.append("page_height = ury - lly")
         script_lines.append("")
+        script_lines.append("# Create canvas for text overlay")
         script_lines.append("c = canvas.Canvas(overlay_path, pagesize=(page_width, page_height))")
         script_lines.append("c.setFont('Helvetica', 9)")
         script_lines.append("")
         
+        # Generate text placement for each filled field
         for field_name, var in self.fields.items():
             value = var.get().strip()
             if value:
                 escaped_value = value.replace('"', '\\"').replace('\\', '\\\\')
+                # Use the same positioning as acroform.py
                 x, y = self.get_field_position(field_name)
                 if x is not None and y is not None:
                     script_lines.append(f'c.drawString({x}, page_height - {y}, "{escaped_value}")')
@@ -349,6 +420,7 @@ class InvoiceFillerGUI:
         script_lines.append("")
         script_lines.append("c.save()")
         script_lines.append("")
+        script_lines.append("# Merge text overlay with the acroform PDF")
         script_lines.append("bg_pdf = PdfReader(bg_path)")
         script_lines.append("overlay_pdf = PdfReader(overlay_path)")
         script_lines.append("")
@@ -364,7 +436,7 @@ class InvoiceFillerGUI:
         return "\n".join(script_lines)
     
     def get_field_position(self, field_name):
-        """Get the position for a field"""
+        """Get the position for a field based on acroform.py positioning"""
         positions = {
             "numero_de_facture": (130, 71.5),
             "date": (95, 96.5),
@@ -387,8 +459,10 @@ class InvoiceFillerGUI:
             "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
         }
         
+        # Add line items positions - fill from top to bottom
         for i in range(1, 5):
-            y_pos = 352 + (4-i) * 25
+            # Use (i-1) to fill from top: line 1 at top, line 4 at bottom
+            y_pos = 352 + (i-1) * 25
             positions[f"libelle_{i}"] = (60, y_pos)
             positions[f"quantite_{i}"] = (290, y_pos) 
             positions[f"prix_unitaire_{i}"] = (360, y_pos)
@@ -397,7 +471,14 @@ class InvoiceFillerGUI:
         return positions.get(field_name, (None, None))
 
 def main():
+    import os
+    
+    # Bypass macOS version check for older systems
+    os.environ['SYSTEM_VERSION_COMPAT'] = '1'
+    
     root = tk.Tk()
+    
+    # Ensure the window appears properly when launched from app bundle
     root.lift()
     root.attributes('-topmost', True)
     root.after_idle(lambda: root.attributes('-topmost', False))

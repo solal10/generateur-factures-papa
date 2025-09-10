@@ -1,0 +1,43 @@
+COMMENT TÉLÉCHARGER LE GÉNÉRATEUR DE FACTURES DEPUIS GITHUB
+==========================================================
+
+ÉTAPE 1 : ALLER SUR GITHUB
+1. Va sur : https://github.com/solal10/generateur-factures-papa
+2. Tu verras la page du projet avec tous les fichiers
+
+ÉTAPE 2 : TÉLÉCHARGER LE DOSSIER
+1. Clique sur le bouton vert "Code" 
+2. Puis clique sur "Download ZIP"
+3. Un fichier .zip sera téléchargé sur ton ordinateur
+
+ÉTAPE 3 : EXTRAIRE LES FICHIERS
+1. Va dans ton dossier "Téléchargements" 
+2. Trouve le fichier "generateur-factures-papa-main.zip"
+3. Fais clic-droit dessus et choisis "Extraire tout..."
+4. Extrait sur le Bureau
+
+ÉTAPE 4 : INSTALLATION PYTHON
+1. Si tu n'as pas Python, va sur : https://www.python.org/downloads/
+2. Télécharge et installe la dernière version
+3. IMPORTANT : Coche "Add Python to PATH" pendant l'installation
+
+ÉTAPE 5 : INSTALLER LES DÉPENDANCES
+1. Ouvre une invite de commande (cherche "cmd" dans le menu Démarrer)
+2. Tape cette commande et appuie sur Entrée :
+   pip install reportlab pdfrw
+
+ÉTAPE 6 : LANCER LE PROGRAMME
+1. Va dans le dossier extrait : generateur-factures-papa-main
+2. Puis dans le sous-dossier : Generateur_Factures_Papa
+3. Double-clique sur "Lancer_Factures.bat"
+
+C'EST TOUT ! Le générateur de factures s'ouvrira.
+
+PROBLÈME ?
+- Si ça ne marche pas, appelle Solal !
+- Ou envoie un message sur WhatsApp avec une capture d'écran
+
+AVANTAGES DE GITHUB :
+- Toujours la dernière version
+- Pas de problème d'antivirus
+- Tu peux télécharger autant de fois que tu veux

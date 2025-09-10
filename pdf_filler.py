@@ -118,8 +118,13 @@ class InvoiceFillerGUI:
         except:
             pass
         
-        # Enable keyboard scrolling
+        # Enable keyboard scrolling (only when not in entry fields)
         def _on_key(event):
+            # Don't scroll if focus is on an Entry widget
+            focused_widget = self.root.focus_get()
+            if isinstance(focused_widget, ttk.Entry):
+                return
+                
             if event.keysym in ['Up', 'k']:
                 self.canvas.yview_scroll(-3, "units")
                 return "break"
@@ -129,9 +134,10 @@ class InvoiceFillerGUI:
             elif event.keysym in ['Page_Up']:
                 self.canvas.yview_scroll(-10, "units")
                 return "break"
-            elif event.keysym in ['Page_Down', 'space']:
+            elif event.keysym in ['Page_Down']:
                 self.canvas.yview_scroll(10, "units")
                 return "break"
+            # Remove space from scroll triggers to allow typing in fields
         
         root.bind("<KeyPress>", _on_key)
         
@@ -148,7 +154,13 @@ class InvoiceFillerGUI:
             label.pack(side=tk.LEFT, padx=(0, 10))
             
             var = tk.StringVar(value=default_value)
-            entry = ttk.Entry(row_frame, textvariable=var, width=width)
+            
+            # Special styling for header fields (invoice number and date)
+            if field_name in ["numero_de_facture", "date"]:
+                entry = tk.Entry(row_frame, textvariable=var, width=width, 
+                               bg="white", fg="black", insertbackground="black")
+            else:
+                entry = ttk.Entry(row_frame, textvariable=var, width=width)
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
             
             self.fields[field_name] = var
@@ -210,10 +222,10 @@ class InvoiceFillerGUI:
             row_frame.pack(fill=tk.X, pady=1)
             
             # Use grid for entries to match header alignment
-            # Libellé
+            # Libellé - with text wrapping/truncation
             libelle_var = tk.StringVar()
             libelle_entry = ttk.Entry(row_frame, textvariable=libelle_var, width=35)
-            libelle_entry.grid(row=0, column=0, padx=(0, 2), sticky="ew")
+            libelle_entry.grid(row=0, column=0, padx=(0, 2), sticky="w")  # Use 'w' instead of 'ew'
             self.fields[f"libelle_{i}"] = libelle_var
             
             # Quantité
@@ -234,11 +246,11 @@ class InvoiceFillerGUI:
             total_entry.grid(row=0, column=3, padx=(6, 2), sticky="ew")
             self.fields[f"total_net_{i}"] = total_var
             
-            # Configure grid columns to match header
-            row_frame.grid_columnconfigure(0, minsize=265)
-            row_frame.grid_columnconfigure(1, minsize=80)
-            row_frame.grid_columnconfigure(2, minsize=95)
-            row_frame.grid_columnconfigure(3, minsize=95)
+            # Configure grid columns with proper sizing
+            row_frame.grid_columnconfigure(0, minsize=265, weight=0)  # Fixed width for libelle
+            row_frame.grid_columnconfigure(1, minsize=80, weight=0)
+            row_frame.grid_columnconfigure(2, minsize=95, weight=0)
+            row_frame.grid_columnconfigure(3, minsize=95, weight=1)   # Allow last column to expand
             
             # Bind calculation
             def make_calculator(i):
@@ -447,11 +459,10 @@ class InvoiceFillerGUI:
             "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
         }
         
-        # Add line items positions (matching acroform.py exactly)
+        # Add line items positions - fill from top to bottom
         for i in range(1, 5):
-            # Fix the row order by using (4-i) instead of (i-1) to reverse order
-            y_pos = 352 + (4-i) * 25
-            # Use exact coordinates from acroform.py
+            # Use (i-1) to fill from top: line 1 at top, line 4 at bottom
+            y_pos = 352 + (i-1) * 25
             positions[f"libelle_{i}"] = (60, y_pos)
             positions[f"quantite_{i}"] = (290, y_pos) 
             positions[f"prix_unitaire_{i}"] = (360, y_pos)
