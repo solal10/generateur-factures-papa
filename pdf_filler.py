@@ -273,18 +273,46 @@ class InvoiceFillerGUI:
             prix_var.trace_add("write", calculator)
     
     def create_totals_fields(self, parent):
-        """Create totals and tax fields"""
-        fields_config = [
-            ("total_hors_taxe", "Total H.T.", "", 20),
-            ("tva_5_5_pourcent", "TVA 5.5%", "", 20),
-            ("tva_10_pourcent", "TVA 10%", "", 20),
-            ("tva_20_pourcent", "TVA 20%", "", 20),
-            ("total_net_de_taxes", "Total Net de Taxes", "", 20),
-            ("acompte_percu", "Acompte perçu", "", 20),
-            ("reste_a_payer", "Reste à payer", "", 20),
-            ("en_votre_aimable_reglement_de_la_somme_de", "Montant en lettres", "", 50),
+        """Create totals and tax fields aligned with Total column"""
+        totals_frame = ttk.LabelFrame(parent, text="Totaux et Taxes", padding=10)
+        totals_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Create a frame to align with the table's Total column
+        container_frame = ttk.Frame(totals_frame)
+        container_frame.pack(fill=tk.X)
+        
+        # Add spacer to align with Total column (same as table layout)
+        spacer_frame = ttk.Frame(container_frame)
+        spacer_frame.pack(side=tk.LEFT)
+        spacer_frame.configure(width=535)  # Width to align with Total column (265+80+95+95 = 535)
+        
+        # Right-aligned fields frame for the totals
+        fields_frame = ttk.Frame(container_frame)
+        fields_frame.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Totals fields (removed "en lettres" field)
+        totals_config = [
+            ("total_hors_taxe", "Total H.T."),
+            ("tva_5_5_pourcent", "TVA 5.5%"),
+            ("tva_10_pourcent", "TVA 10%"),
+            ("tva_20_pourcent", "TVA 20%"),
+            ("total_net_de_taxes", "Total Net de Taxes"),
+            ("acompte_percu", "Acompte perçu"),
+            ("reste_a_payer", "Reste à payer"),
         ]
-        self.create_field_group(parent, "Totaux et Taxes", fields_config)
+        
+        for field_name, label_text in totals_config:
+            row_frame = ttk.Frame(fields_frame)
+            row_frame.pack(fill=tk.X, pady=2)
+            
+            label = ttk.Label(row_frame, text=label_text + ":", width=20, anchor="e")
+            label.pack(side=tk.LEFT, padx=(0, 10))
+            
+            var = tk.StringVar()
+            entry = ttk.Entry(row_frame, textvariable=var, width=15, justify="right")
+            entry.pack(side=tk.RIGHT)
+            
+            self.fields[field_name] = var
     
     def update_totals(self):
         """Update total HT automatically"""
@@ -456,7 +484,6 @@ class InvoiceFillerGUI:
             "total_net_de_taxes": (470, 552),
             "acompte_percu": (470, 572),
             "reste_a_payer": (470, 610),
-            "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
         }
         
         # Add line items positions - fill from top to bottom
