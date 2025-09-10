@@ -240,11 +240,41 @@ class InvoiceFillerGUI:
             prix_entry.grid(row=0, column=2, padx=(6, 2), sticky="ew")
             self.fields[f"prix_unitaire_{i}"] = prix_var
             
+            # Add formatting for prix unitaire field
+            def make_prix_formatter(field_var):
+                def format_on_focus_out(event):
+                    try:
+                        value = field_var.get().strip()
+                        if value and value != "0":
+                            formatted_value = f"{float(value):.2f}"
+                            field_var.set(formatted_value)
+                    except ValueError:
+                        pass
+                return format_on_focus_out
+            
+            prix_formatter = make_prix_formatter(prix_var)
+            prix_entry.bind("<FocusOut>", prix_formatter)
+            
             # Total (auto-calculated)
             total_var = tk.StringVar()
             total_entry = ttk.Entry(row_frame, textvariable=total_var, width=12)
             total_entry.grid(row=0, column=3, padx=(6, 2), sticky="ew")
             self.fields[f"total_net_{i}"] = total_var
+            
+            # Add formatting for total field
+            def make_total_formatter(field_var):
+                def format_on_focus_out(event):
+                    try:
+                        value = field_var.get().strip()
+                        if value and value != "0":
+                            formatted_value = f"{float(value):.2f}"
+                            field_var.set(formatted_value)
+                    except ValueError:
+                        pass
+                return format_on_focus_out
+            
+            total_formatter = make_total_formatter(total_var)
+            total_entry.bind("<FocusOut>", total_formatter)
             
             # Configure grid columns with proper sizing
             row_frame.grid_columnconfigure(0, minsize=265, weight=0)  # Fixed width for libelle
@@ -312,6 +342,23 @@ class InvoiceFillerGUI:
             var = tk.StringVar()
             entry = ttk.Entry(row_frame, textvariable=var, width=15, justify="right")
             entry.pack(side=tk.RIGHT)
+            
+            # Add formatting for all monetary fields
+            if field_name in ["acompte_percu", "tva_5_5_pourcent", "tva_10_pourcent", "tva_20_pourcent", 
+                             "total_hors_taxe", "total_net_de_taxes", "reste_a_payer"]:
+                def make_formatter(field_var):
+                    def format_on_focus_out(event):
+                        try:
+                            value = field_var.get().strip()
+                            if value and value != "0":
+                                formatted_value = f"{float(value):.2f}"
+                                field_var.set(formatted_value)
+                        except ValueError:
+                            pass
+                    return format_on_focus_out
+                
+                formatter = make_formatter(var)
+                entry.bind("<FocusOut>", formatter)
             
             self.fields[field_name] = var
     
