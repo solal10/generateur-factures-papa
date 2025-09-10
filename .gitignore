@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Generated PDFs (keep template)
+FACTURE_*.pdf
+_text_overlay.pdf
+_generate_pdf.py
+
+# Test files
+test*.py
+test*.pdf
+
+# Logs
+*.log
+/tmp/
+
+# Backup files
+*.bak
+*.backup
+
+# System
+Thumbs.db
+.DS_Store
