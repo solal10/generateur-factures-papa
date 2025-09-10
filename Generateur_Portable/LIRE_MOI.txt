@@ -1,0 +1,23 @@
+GÉNÉRATEUR DE FACTURES - INSTALLATION FACILE
+=====================================================
+
+ÉTAPE 1: Installer Python (si pas déjà fait)
+1. Va sur: https://www.python.org/downloads/
+2. Télécharge la dernière version de Python
+3. IMPORTANT: Coche "Add Python to PATH" pendant l'installation
+
+ÉTAPE 2: Lancer le programme
+1. Double-clique sur "Lancer_Factures.bat"
+2. Le script installera automatiquement les dépendances
+3. Le programme s'ouvrira
+
+C'EST TOUT!
+
+Le fichier .bat vérifie Python, installe les dépendances si nécessaire,
+et lance le programme automatiquement.
+
+PROBLÈME?
+- Si Python n'est pas reconnu, redémarre ton ordinateur après installation
+- Ou appelle Solal pour aide :)
+
+Générateur créé avec ❤️ pour Papa
