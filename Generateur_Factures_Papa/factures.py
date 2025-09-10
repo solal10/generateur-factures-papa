@@ -245,8 +245,10 @@ class InvoiceFillerGUI:
                 def format_on_focus_out(event):
                     try:
                         value = field_var.get().strip()
+                        # Remove existing euro symbol if present
+                        value = value.replace(' €', '').replace('€', '').strip()
                         if value and value != "0":
-                            formatted_value = f"{float(value):.2f}"
+                            formatted_value = f"{float(value):.2f} €"
                             field_var.set(formatted_value)
                     except ValueError:
                         pass
@@ -266,8 +268,10 @@ class InvoiceFillerGUI:
                 def format_on_focus_out(event):
                     try:
                         value = field_var.get().strip()
+                        # Remove existing euro symbol if present
+                        value = value.replace(' €', '').replace('€', '').strip()
                         if value and value != "0":
-                            formatted_value = f"{float(value):.2f}"
+                            formatted_value = f"{float(value):.2f} €"
                             field_var.set(formatted_value)
                     except ValueError:
                         pass
@@ -287,10 +291,13 @@ class InvoiceFillerGUI:
                 def calculate_total(*args):
                     try:
                         qty = float(self.fields[f"quantite_{i}"].get() or 0)
-                        price = float(self.fields[f"prix_unitaire_{i}"].get() or 0)
+                        # Strip euro symbols before calculating
+                        price_str = self.fields[f"prix_unitaire_{i}"].get() or "0"
+                        price_str = price_str.replace(' €', '').replace('€', '').strip()
+                        price = float(price_str or 0)
                         total = qty * price
                         if total > 0:
-                            self.fields[f"total_net_{i}"].set(f"{total:.2f}")
+                            self.fields[f"total_net_{i}"].set(f"{total:.2f} €")
                         else:
                             self.fields[f"total_net_{i}"].set("")
                         self.update_totals()
@@ -350,8 +357,10 @@ class InvoiceFillerGUI:
                     def format_on_focus_out(event):
                         try:
                             value = field_var.get().strip()
+                            # Remove existing euro symbol if present
+                            value = value.replace(' €', '').replace('€', '').strip()
                             if value and value != "0":
-                                formatted_value = f"{float(value):.2f}"
+                                formatted_value = f"{float(value):.2f} €"
                                 field_var.set(formatted_value)
                         except ValueError:
                             pass
@@ -359,6 +368,24 @@ class InvoiceFillerGUI:
                 
                 formatter = make_formatter(var)
                 entry.bind("<FocusOut>", formatter)
+            
+            # Special formatting for confirmation somme field
+            if field_name == "en_votre_aimable_reglement_de_la_somme_de":
+                def make_confirmation_formatter(field_var):
+                    def format_on_focus_out(event):
+                        try:
+                            value = field_var.get().strip()
+                            # Remove existing formatting if present
+                            value = value.replace(',00 €', '').replace(' €', '').replace('€', '').replace(',00', '').strip()
+                            if value and value != "0":
+                                formatted_value = f"{float(value):.0f},00 €"
+                                field_var.set(formatted_value)
+                        except ValueError:
+                            pass
+                    return format_on_focus_out
+                
+                confirmation_formatter = make_confirmation_formatter(var)
+                entry.bind("<FocusOut>", confirmation_formatter)
             
             self.fields[field_name] = var
     
@@ -369,10 +396,12 @@ class InvoiceFillerGUI:
             for i in range(1, 5):
                 total_str = self.fields[f"total_net_{i}"].get()
                 if total_str:
-                    total_ht += float(total_str)
+                    # Strip euro symbols before calculating
+                    clean_total = total_str.replace(' €', '').replace('€', '').strip()
+                    total_ht += float(clean_total)
             
             if total_ht > 0:
-                self.fields["total_hors_taxe"].set(f"{total_ht:.2f}")
+                self.fields["total_hors_taxe"].set(f"{total_ht:.2f} €")
             else:
                 self.fields["total_hors_taxe"].set("")
                 
@@ -387,22 +416,28 @@ class InvoiceFillerGUI:
             for i in range(1, 5):
                 total_str = self.fields[f"total_net_{i}"].get()
                 if total_str:
-                    total_ht += float(total_str)
+                    # Strip euro symbols before calculating
+                    clean_total = total_str.replace(' €', '').replace('€', '').strip()
+                    total_ht += float(clean_total)
             
-            self.fields["total_hors_taxe"].set(f"{total_ht:.2f}")
+            self.fields["total_hors_taxe"].set(f"{total_ht:.2f} €")
             
             # Calculate taxes (you can modify these rates as needed)
-            tva_5_5 = float(self.fields["tva_5_5_pourcent"].get() or 0)
-            tva_10 = float(self.fields["tva_10_pourcent"].get() or 0)
-            tva_20 = float(self.fields["tva_20_pourcent"].get() or 0)
+            def get_clean_value(field_name):
+                value = self.fields[field_name].get() or "0"
+                return float(value.replace(' €', '').replace('€', '').strip() or 0)
+            
+            tva_5_5 = get_clean_value("tva_5_5_pourcent")
+            tva_10 = get_clean_value("tva_10_pourcent")
+            tva_20 = get_clean_value("tva_20_pourcent")
             
             total_ttc = total_ht + tva_5_5 + tva_10 + tva_20
-            self.fields["total_net_de_taxes"].set(f"{total_ttc:.2f}")
+            self.fields["total_net_de_taxes"].set(f"{total_ttc:.2f} €")
             
             # Calculate remaining amount
-            acompte = float(self.fields["acompte_percu"].get() or 0)
+            acompte = get_clean_value("acompte_percu")
             reste = total_ttc - acompte
-            self.fields["reste_a_payer"].set(f"{reste:.2f}")
+            self.fields["reste_a_payer"].set(f"{reste:.2f} €")
             
         except ValueError as e:
             messagebox.showwarning("Erreur de calcul", "Vérifiez que tous les montants sont des nombres valides.")
@@ -495,7 +530,9 @@ class InvoiceFillerGUI:
         for field_name, var in self.fields.items():
             value = var.get().strip()
             if value:
-                escaped_value = value.replace('"', '\\"').replace('\\', '\\\\')
+                # Clean the value for PDF output (remove euro symbols for processing)
+                clean_value = value.replace(' €', '').replace('€', '').strip()
+                escaped_value = clean_value.replace('"', '\\"').replace('\\', '\\\\')
                 x, y = self.get_field_position(field_name)
                 if x is not None and y is not None:
                     # Determine font size based on field position
@@ -531,8 +568,25 @@ class InvoiceFillerGUI:
                         script_lines.append(f'for i, line in enumerate(lines):')
                         script_lines.append(f'    c.drawString({x}, page_height - {y} - (i * 12), line)')
                     else:
-                        # Normal single line text
-                        script_lines.append(f'c.drawString({x}, page_height - {y}, "{escaped_value}")')
+                        # Check if field is monetary and needs right alignment
+                        is_monetary = (field_name.startswith(("prix_unitaire_", "total_net_")) or 
+                                     field_name in ["total_hors_taxe", "tva_5_5_pourcent", "tva_10_pourcent", 
+                                                   "tva_20_pourcent", "total_net_de_taxes", "acompte_percu", "reste_a_payer"])
+                        
+                        if is_monetary:
+                            # Add euro symbol and right-align
+                            script_lines.append(f'text_with_euro = "{escaped_value} €"')
+                            script_lines.append(f'text_width = c.stringWidth(text_with_euro, font_name, {font_size})')
+                            script_lines.append(f'c.drawRightString({x} + 80, page_height - {y}, text_with_euro)')
+                        elif field_name == "en_votre_aimable_reglement_de_la_somme_de":
+                            # Special formatting for confirmation field: bold, with ,00 and euro
+                            script_lines.append(f'c.setFont(font_name + "-Bold", {font_size})')
+                            script_lines.append(f'formatted_amount = "{escaped_value},00 €"')
+                            script_lines.append(f'c.drawString({x}, page_height - {y}, formatted_amount)')
+                            script_lines.append(f'c.setFont(font_name, {font_size})  # Reset to normal font')
+                        else:
+                            # Normal single line text
+                            script_lines.append(f'c.drawString({x}, page_height - {y}, "{escaped_value}")')
         
         script_lines.append("")
         script_lines.append("c.save()")
