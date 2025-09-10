@@ -337,6 +337,7 @@ class InvoiceFillerGUI:
             ("acompte_percu", "Acompte perçu"),
             ("reste_a_payer", "Reste à payer"),
             ("en_votre_aimable_reglement_de_la_somme_de", "Confirmation somme"),
+            ("additions_speciales", "Additions spéciales"),
         ]
         
         for field_name, label_text in totals_config:
@@ -347,8 +348,36 @@ class InvoiceFillerGUI:
             label.pack(side=tk.LEFT, padx=(0, 10))
             
             var = tk.StringVar()
-            entry = ttk.Entry(row_frame, textvariable=var, width=15, justify="right")
-            entry.pack(side=tk.RIGHT)
+            
+            # Special handling for additions_speciales field - make it larger
+            if field_name == "additions_speciales":
+                # Create a text widget instead of entry for multiline support
+                from tkinter import Text, Scrollbar
+                text_frame = ttk.Frame(row_frame)
+                text_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+                
+                text_widget = Text(text_frame, height=3, width=40, wrap=tk.WORD, font=("TkDefaultFont", 9))
+                scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+                text_widget.configure(yscrollcommand=scrollbar.set)
+                
+                text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+                scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+                
+                # Create a wrapper to make Text widget behave like StringVar
+                class TextVar:
+                    def __init__(self, text_widget):
+                        self.text_widget = text_widget
+                    def get(self):
+                        return self.text_widget.get("1.0", tk.END).strip()
+                    def set(self, value):
+                        self.text_widget.delete("1.0", tk.END)
+                        self.text_widget.insert("1.0", value)
+                
+                var = TextVar(text_widget)
+                entry = text_widget  # For the formatters to work
+            else:
+                entry = ttk.Entry(row_frame, textvariable=var, width=15, justify="right")
+                entry.pack(side=tk.RIGHT)
             
             # Add formatting for all monetary fields
             if field_name in ["acompte_percu", "tva_5_5_pourcent", "tva_10_pourcent", "tva_20_pourcent", 
@@ -545,12 +574,17 @@ class InvoiceFillerGUI:
                     else:
                         script_lines.append('c.setFillColorRGB(0, 0, 0)  # Black text')
                     
-                    # Handle text wrapping for libelle fields
-                    if field_name.startswith("libelle_") and len(value) > 35:
-                        # Split long libelle text into multiple lines
-                        script_lines.append(f'# Handle long libelle text for {field_name}')
+                    # Handle text wrapping for libelle fields and additions_speciales
+                    if (field_name.startswith("libelle_") and len(value) > 35) or field_name == "additions_speciales":
+                        # Split long text into multiple lines
+                        script_lines.append(f'# Handle long text for {field_name}')
                         script_lines.append(f'text = "{escaped_value}"')
-                        script_lines.append(f'max_width = 225  # Maximum width for libelle field')
+                        
+                        if field_name == "additions_speciales":
+                            script_lines.append(f'max_width = 500  # Wider width for additions speciales field')
+                        else:
+                            script_lines.append(f'max_width = 225  # Maximum width for libelle field')
+                            
                         script_lines.append(f'words = text.split(" ")')
                         script_lines.append(f'lines = []')
                         script_lines.append(f'current_line = ""')
@@ -579,11 +613,13 @@ class InvoiceFillerGUI:
                             script_lines.append(f'text_width = c.stringWidth(text_with_euro, font_name, {font_size})')
                             script_lines.append(f'c.drawRightString({x} + 80, page_height - {y}, text_with_euro)')
                         elif field_name == "en_votre_aimable_reglement_de_la_somme_de":
-                            # Special formatting for confirmation field: bold, with ,00 and euro
+                            # Special formatting for confirmation field: bold, navy blue, with ,00 and euro
                             script_lines.append(f'c.setFont(font_name + "-Bold", {font_size})')
+                            script_lines.append(f'c.setFillColorRGB(0, 0, 0.5)  # Navy blue color')
                             script_lines.append(f'formatted_amount = "{escaped_value},00 €"')
                             script_lines.append(f'c.drawString({x}, page_height - {y}, formatted_amount)')
                             script_lines.append(f'c.setFont(font_name, {font_size})  # Reset to normal font')
+                            script_lines.append(f'c.setFillColorRGB(0, 0, 0)  # Reset to black text')
                         else:
                             # Normal single line text
                             script_lines.append(f'c.drawString({x}, page_height - {y}, "{escaped_value}")')
@@ -620,7 +656,7 @@ class InvoiceFillerGUI:
             "libelle_", "quantite_", "prix_unitaire_", "total_net_",
             "total_hors_taxe", "tva_5_5_pourcent", "tva_10_pourcent", 
             "tva_20_pourcent", "total_net_de_taxes", "acompte_percu", 
-            "reste_a_payer", "en_votre_aimable_reglement_de_la_somme_de"
+            "reste_a_payer", "en_votre_aimable_reglement_de_la_somme_de", "additions_speciales"
         ]
         
         # Check if field is in table or after table (size 10)
@@ -657,6 +693,7 @@ class InvoiceFillerGUI:
             "acompte_percu": (465, 572),
             "reste_a_payer": (465, 610),
             "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
+            "additions_speciales": (50, 690),  # Bottom left of page for special additions
         }
         
         # Add line items positions - fill from top to bottom
