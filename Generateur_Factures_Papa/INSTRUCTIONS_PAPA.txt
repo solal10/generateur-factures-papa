@@ -1,0 +1,34 @@
+GÉNÉRATEUR DE FACTURES - INSTRUCTIONS POUR PAPA
+================================================
+
+INSTALLATION :
+1. Installe Python sur ton ordinateur (si pas déjà fait) : https://python.org
+2. Installe les dépendances : ouvre une invite de commande et tape :
+   pip install reportlab pdfrw
+3. Copie ce dossier "Generateur_Factures_Papa" sur le Bureau de ton ordinateur
+
+UTILISATION :
+1. Double-clique sur "Lancer_Factures.bat"
+2. Une fenêtre s'ouvre avec le formulaire de facture
+3. Remplis les champs :
+   - Numéro de facture (obligatoire)
+   - Date (déjà remplie automatiquement)
+   - Informations client (nom, adresse, etc.)
+   - Articles de la facture (libellé, quantité, prix)
+4. Clique sur "Calculer Totaux" pour calculer automatiquement
+5. Clique sur "Générer la Facture PDF"
+6. La facture PDF sera créée dans le même dossier
+
+IMPORTANT :
+- Garde toujours les fichiers ensemble dans le même dossier :
+  * factures.py
+  * MODELE FACTURE GLOBAL SOLUTIONS A REMPLIR.pdf
+  * Lancer_Factures.bat
+- Les factures générées apparaîtront dans ce même dossier
+- Nom du fichier : FACTURE_[numéro].pdf
+
+PROBLÈME ?
+- Si ça ne marche pas, vérifie que les 2 fichiers sont bien dans le même dossier
+- Appelle Solal si besoin !
+
+Bon travail Papa ! 👍

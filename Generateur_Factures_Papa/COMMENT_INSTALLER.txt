@@ -1,0 +1,25 @@
+COMMENT ENVOYER LE DOSSIER À PAPA
+================================
+
+PROBLÈME : Les antivirus détectent parfois le fichier .exe comme suspect
+
+SOLUTIONS :
+
+1. COMPRESSION WINDOWS (RECOMMANDÉ) :
+   - Fais clic-droit sur le dossier "Generateur_Factures_Papa"
+   - Choisis "Envoyer vers" > "Dossier compressé"
+   - Envoie le fichier .zip créé par Windows
+
+2. TRANSFERT PAR CLÉS USB :
+   - Copie le dossier sur une clé USB
+   - Apporte-la directement à papa
+
+3. PARTAGE DE FICHIERS :
+   - Utilise WeTransfer, Google Drive, ou Dropbox
+   - Compresse d'abord avec Windows (méthode 1)
+
+4. SI L'ANTIVIRUS BLOQUE :
+   - Dis à papa d'ajouter une exception dans son antivirus
+   - Ou désactive temporairement l'antivirus pendant l'extraction
+
+IMPORTANT : C'est un FAUX POSITIF. Le fichier est sûr, c'est juste que les antivirus n'aiment pas les .exe créés avec PyInstaller.

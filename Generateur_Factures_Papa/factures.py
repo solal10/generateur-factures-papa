@@ -1,0 +1,410 @@
+#!/usr/bin/env python3
+import tkinter as tk
+from tkinter import ttk, messagebox
+from datetime import datetime
+import subprocess
+import os
+
+class InvoiceFillerGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Générateur de Factures - Global Solutions")
+        self.root.geometry("900x1000")
+        
+        # Create main frame with scrollbar
+        main_frame = ttk.Frame(root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Create canvas and scrollbar
+        canvas = tk.Canvas(main_frame)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Dictionary to store all field variables
+        self.fields = {}
+        
+        # Title
+        title_label = ttk.Label(scrollable_frame, text="Global Solutions - Générateur de Factures", 
+                               font=("Arial", 16, "bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # Create field groups
+        self.create_header_fields(scrollable_frame)
+        self.create_client_fields(scrollable_frame)
+        self.create_project_fields(scrollable_frame)
+        self.create_invoice_items(scrollable_frame)
+        self.create_totals_fields(scrollable_frame)
+        
+        # Buttons frame
+        buttons_frame = ttk.Frame(scrollable_frame)
+        buttons_frame.pack(pady=20, fill=tk.X)
+        
+        # Generate PDF button
+        generate_btn = ttk.Button(buttons_frame, text="Générer la Facture PDF", 
+                                 command=self.generate_pdf)
+        generate_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Clear all button
+        clear_btn = ttk.Button(buttons_frame, text="Effacer Tout", 
+                              command=self.clear_all_fields)
+        clear_btn.pack(side=tk.LEFT)
+        
+        # Auto-calculate button
+        calc_btn = ttk.Button(buttons_frame, text="Calculer Totaux", 
+                             command=self.auto_calculate_totals)
+        calc_btn.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Store canvas reference for scrolling
+        self.canvas = canvas
+        
+        # Bind scroll events
+        root.bind_all("<MouseWheel>", self._on_scroll)
+        
+    def _on_scroll(self, event):
+        try:
+            delta = event.delta
+            if delta < -32768:
+                delta = delta + 65536
+            elif delta > 32768:
+                delta = delta - 65536
+            
+            scroll_amount = -delta * 0.3
+            scroll_amount = max(-30, min(30, scroll_amount))
+            
+            if scroll_amount != 0:
+                current = self.canvas.yview()[0]
+                canvas_height = self.canvas.winfo_height()
+                scroll_region = self.canvas.cget('scrollregion')
+                if scroll_region:
+                    total_height = int(scroll_region.split()[3])
+                    if total_height > canvas_height:
+                        scroll_fraction = scroll_amount / total_height
+                        new_pos = current + scroll_fraction
+                        new_pos = max(0.0, min(1.0, new_pos))
+                        self.canvas.yview_moveto(new_pos)
+            
+            return "break"
+        except Exception:
+            pass
+        
+        return "break"
+    
+    def create_field_group(self, parent, title, fields_config):
+        """Create a group of fields with a title"""
+        group_frame = ttk.LabelFrame(parent, text=title, padding=10)
+        group_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        for field_name, label_text, default_value, width in fields_config:
+            row_frame = ttk.Frame(group_frame)
+            row_frame.pack(fill=tk.X, pady=2)
+            
+            label = ttk.Label(row_frame, text=label_text + ":", width=25, anchor="w")
+            label.pack(side=tk.LEFT, padx=(0, 10))
+            
+            var = tk.StringVar(value=default_value)
+            entry = ttk.Entry(row_frame, textvariable=var, width=width)
+            entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            
+            self.fields[field_name] = var
+    
+    def create_header_fields(self, parent):
+        """Create header fields"""
+        fields_config = [
+            ("numero_de_facture", "Numéro de facture", "", 40),
+            ("date", "Date", datetime.now().strftime("%d/%m/%Y"), 40),
+        ]
+        self.create_field_group(parent, "En-tête de facture", fields_config)
+    
+    def create_client_fields(self, parent):
+        """Create client information fields"""
+        fields_config = [
+            ("nom", "Nom", "", 40),
+            ("adresse", "Adresse", "", 40),
+            ("ville", "Ville", "", 40),
+            ("num_rc", "Numéro RC", "", 40),
+            ("tva", "TVA", "", 40),
+        ]
+        self.create_field_group(parent, "Informations Client", fields_config)
+    
+    def create_project_fields(self, parent):
+        """Create project fields"""
+        fields_config = [
+            ("document", "Document", "", 40),
+            ("lieu_d_intervention", "Lieu d'intervention", "", 40),
+            ("debut_du_chantier", "Début du chantier", "", 40),
+            ("fin_du_chantier", "Fin du chantier", "", 40),
+        ]
+        self.create_field_group(parent, "Informations Projet", fields_config)
+    
+    def create_invoice_items(self, parent):
+        """Create invoice line items"""
+        items_frame = ttk.LabelFrame(parent, text="Articles de la facture", padding=10)
+        items_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Headers
+        headers_frame = ttk.Frame(items_frame)
+        headers_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        ttk.Label(headers_frame, text="Libellé", font=("Arial", 9, "bold")).grid(row=0, column=0, padx=(2, 2), sticky="w")
+        ttk.Label(headers_frame, text="Qté", font=("Arial", 9, "bold")).grid(row=0, column=1, padx=(8, 2), sticky="w")
+        ttk.Label(headers_frame, text="Prix Unit.", font=("Arial", 9, "bold")).grid(row=0, column=2, padx=(8, 2), sticky="w")
+        ttk.Label(headers_frame, text="Total", font=("Arial", 9, "bold")).grid(row=0, column=3, padx=(8, 2), sticky="w")
+        
+        headers_frame.grid_columnconfigure(0, minsize=265)
+        headers_frame.grid_columnconfigure(1, minsize=80)
+        headers_frame.grid_columnconfigure(2, minsize=95)
+        headers_frame.grid_columnconfigure(3, minsize=95)
+        
+        # Create 4 rows for invoice items
+        for i in range(1, 5):
+            row_frame = ttk.Frame(items_frame)
+            row_frame.pack(fill=tk.X, pady=1)
+            
+            # Libellé
+            libelle_var = tk.StringVar()
+            libelle_entry = ttk.Entry(row_frame, textvariable=libelle_var, width=35)
+            libelle_entry.grid(row=0, column=0, padx=(0, 2), sticky="ew")
+            self.fields[f"libelle_{i}"] = libelle_var
+            
+            # Quantité
+            quantite_var = tk.StringVar()
+            quantite_entry = ttk.Entry(row_frame, textvariable=quantite_var, width=10)
+            quantite_entry.grid(row=0, column=1, padx=(6, 2), sticky="ew")
+            self.fields[f"quantite_{i}"] = quantite_var
+            
+            # Prix unitaire
+            prix_var = tk.StringVar()
+            prix_entry = ttk.Entry(row_frame, textvariable=prix_var, width=12)
+            prix_entry.grid(row=0, column=2, padx=(6, 2), sticky="ew")
+            self.fields[f"prix_unitaire_{i}"] = prix_var
+            
+            # Total
+            total_var = tk.StringVar()
+            total_entry = ttk.Entry(row_frame, textvariable=total_var, width=12)
+            total_entry.grid(row=0, column=3, padx=(6, 2), sticky="ew")
+            self.fields[f"total_net_{i}"] = total_var
+            
+            row_frame.grid_columnconfigure(0, minsize=265)
+            row_frame.grid_columnconfigure(1, minsize=80)
+            row_frame.grid_columnconfigure(2, minsize=95)
+            row_frame.grid_columnconfigure(3, minsize=95)
+            
+            # Bind calculation
+            def make_calculator(i):
+                def calculate_total(*args):
+                    try:
+                        qty = float(self.fields[f"quantite_{i}"].get() or 0)
+                        price = float(self.fields[f"prix_unitaire_{i}"].get() or 0)
+                        total = qty * price
+                        if total > 0:
+                            self.fields[f"total_net_{i}"].set(f"{total:.2f}")
+                        else:
+                            self.fields[f"total_net_{i}"].set("")
+                        self.update_totals()
+                    except ValueError:
+                        self.fields[f"total_net_{i}"].set("")
+                return calculate_total
+            
+            calculator = make_calculator(i)
+            quantite_var.trace_add("write", calculator)
+            prix_var.trace_add("write", calculator)
+    
+    def create_totals_fields(self, parent):
+        """Create totals and tax fields"""
+        fields_config = [
+            ("total_hors_taxe", "Total H.T.", "", 20),
+            ("tva_5_5_pourcent", "TVA 5.5%", "", 20),
+            ("tva_10_pourcent", "TVA 10%", "", 20),
+            ("tva_20_pourcent", "TVA 20%", "", 20),
+            ("total_net_de_taxes", "Total Net de Taxes", "", 20),
+            ("acompte_percu", "Acompte perçu", "", 20),
+            ("reste_a_payer", "Reste à payer", "", 20),
+            ("en_votre_aimable_reglement_de_la_somme_de", "Montant en lettres", "", 50),
+        ]
+        self.create_field_group(parent, "Totaux et Taxes", fields_config)
+    
+    def update_totals(self):
+        """Update total HT automatically"""
+        try:
+            total_ht = 0
+            for i in range(1, 5):
+                total_str = self.fields[f"total_net_{i}"].get()
+                if total_str:
+                    total_ht += float(total_str)
+            
+            if total_ht > 0:
+                self.fields["total_hors_taxe"].set(f"{total_ht:.2f}")
+            else:
+                self.fields["total_hors_taxe"].set("")
+                
+        except ValueError:
+            pass
+    
+    def auto_calculate_totals(self):
+        """Auto-calculate all totals and taxes"""
+        try:
+            total_ht = 0
+            for i in range(1, 5):
+                total_str = self.fields[f"total_net_{i}"].get()
+                if total_str:
+                    total_ht += float(total_str)
+            
+            self.fields["total_hors_taxe"].set(f"{total_ht:.2f}")
+            
+            tva_5_5 = float(self.fields["tva_5_5_pourcent"].get() or 0)
+            tva_10 = float(self.fields["tva_10_pourcent"].get() or 0)
+            tva_20 = float(self.fields["tva_20_pourcent"].get() or 0)
+            
+            total_ttc = total_ht + tva_5_5 + tva_10 + tva_20
+            self.fields["total_net_de_taxes"].set(f"{total_ttc:.2f}")
+            
+            acompte = float(self.fields["acompte_percu"].get() or 0)
+            reste = total_ttc - acompte
+            self.fields["reste_a_payer"].set(f"{reste:.2f}")
+            
+        except ValueError as e:
+            messagebox.showwarning("Erreur de calcul", "Vérifiez que tous les montants sont des nombres valides.")
+    
+    def clear_all_fields(self):
+        """Clear all form fields"""
+        if messagebox.askyesno("Confirmer", "Êtes-vous sûr de vouloir effacer tous les champs ?"):
+            for field_name, var in self.fields.items():
+                if field_name != "date":
+                    var.set("")
+    
+    def generate_pdf(self):
+        """Generate the PDF invoice"""
+        try:
+            if not self.fields["numero_de_facture"].get().strip():
+                messagebox.showwarning("Champ manquant", "Le numéro de facture est obligatoire.")
+                return
+            
+            script_content = self.create_filled_form_script()
+            
+            with open("temp_filled_form.py", "w", encoding="utf-8") as f:
+                f.write(script_content)
+            
+            result = subprocess.run(["python", "temp_filled_form.py"], 
+                                  cwd=".", capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                os.remove("temp_filled_form.py")
+                invoice_number = self.fields["numero_de_facture"].get().strip()
+                output_filename = f"FACTURE_{invoice_number}.pdf" if invoice_number else "FACTURE_SANS_NUMERO.pdf"
+                
+                messagebox.showinfo("Succès", 
+                                  f"La facture PDF a été générée avec succès!\n\nFichier: {output_filename}")
+            else:
+                messagebox.showerror("Erreur", 
+                                   f"Erreur lors de la génération du PDF:\n{result.stderr}")
+                
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Une erreur s'est produite:\n{str(e)}")
+    
+    def create_filled_form_script(self):
+        """Create a script that overlays text on the existing acroform PDF"""
+        script_lines = []
+        script_lines.append("from reportlab.pdfgen import canvas")
+        script_lines.append("from reportlab.lib.pagesizes import A4")
+        script_lines.append("from pdfrw import PdfReader, PdfWriter, PageMerge")
+        script_lines.append("")
+        
+        invoice_number = self.fields["numero_de_facture"].get().strip()
+        output_filename = f"FACTURE_{invoice_number}.pdf" if invoice_number else "FACTURE_SANS_NUMERO.pdf"
+        
+        script_lines.append('bg_path = "MODELE FACTURE GLOBAL SOLUTIONS A REMPLIR.pdf"')
+        script_lines.append('overlay_path = "_text_overlay.pdf"')
+        script_lines.append(f'out_path = "{output_filename}"')
+        script_lines.append("")
+        script_lines.append("bg_pdf = PdfReader(bg_path)")
+        script_lines.append("page = bg_pdf.pages[0]")
+        script_lines.append("llx, lly, urx, ury = [float(x) for x in page.MediaBox]")
+        script_lines.append("page_width = urx - llx")
+        script_lines.append("page_height = ury - lly")
+        script_lines.append("")
+        script_lines.append("c = canvas.Canvas(overlay_path, pagesize=(page_width, page_height))")
+        script_lines.append("c.setFont('Helvetica', 9)")
+        script_lines.append("")
+        
+        for field_name, var in self.fields.items():
+            value = var.get().strip()
+            if value:
+                escaped_value = value.replace('"', '\\"').replace('\\', '\\\\')
+                x, y = self.get_field_position(field_name)
+                if x is not None and y is not None:
+                    script_lines.append(f'c.drawString({x}, page_height - {y}, "{escaped_value}")')
+        
+        script_lines.append("")
+        script_lines.append("c.save()")
+        script_lines.append("")
+        script_lines.append("bg_pdf = PdfReader(bg_path)")
+        script_lines.append("overlay_pdf = PdfReader(overlay_path)")
+        script_lines.append("")
+        script_lines.append("page_bg = bg_pdf.pages[0]")
+        script_lines.append("page_overlay = overlay_pdf.pages[0]")
+        script_lines.append("")
+        script_lines.append("merger = PageMerge(page_bg)")
+        script_lines.append("merger.add(page_overlay).render()")
+        script_lines.append("")
+        script_lines.append("PdfWriter(out_path, trailer=bg_pdf).write()")
+        script_lines.append("print('PDF generated successfully!')")
+        
+        return "\n".join(script_lines)
+    
+    def get_field_position(self, field_name):
+        """Get the position for a field"""
+        positions = {
+            "numero_de_facture": (130, 71.5),
+            "date": (95, 96.5),
+            "nom": (50, 214),
+            "adresse": (50, 226),
+            "ville": (50, 238),
+            "num_rc": (50, 250),
+            "tva": (50, 262),
+            "document": (355, 203),
+            "lieu_d_intervention": (397, 227),
+            "debut_du_chantier": (393, 251),
+            "fin_du_chantier": (378, 263),
+            "total_hors_taxe": (470, 447),
+            "tva_5_5_pourcent": (470, 475),
+            "tva_10_pourcent": (470, 504),
+            "tva_20_pourcent": (470, 529),
+            "total_net_de_taxes": (470, 552),
+            "acompte_percu": (470, 572),
+            "reste_a_payer": (470, 610),
+            "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
+        }
+        
+        for i in range(1, 5):
+            y_pos = 352 + (4-i) * 25
+            positions[f"libelle_{i}"] = (60, y_pos)
+            positions[f"quantite_{i}"] = (290, y_pos) 
+            positions[f"prix_unitaire_{i}"] = (360, y_pos)
+            positions[f"total_net_{i}"] = (465, y_pos)
+        
+        return positions.get(field_name, (None, None))
+
+def main():
+    root = tk.Tk()
+    root.lift()
+    root.attributes('-topmost', True)
+    root.after_idle(lambda: root.attributes('-topmost', False))
+    root.focus_force()
+    
+    app = InvoiceFillerGUI(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,3 @@
+@echo off
+echo Lancement du générateur de factures...
+python factures.py
