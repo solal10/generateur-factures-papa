@@ -158,7 +158,7 @@ class InvoiceFillerGUI:
             # Special styling for header fields (invoice number and date)
             if field_name in ["numero_de_facture", "date"]:
                 entry = tk.Entry(row_frame, textvariable=var, width=width, 
-                               bg="darkblue", fg="white", insertbackground="white")
+                               bg="white", fg="black", insertbackground="black")
             else:
                 entry = ttk.Entry(row_frame, textvariable=var, width=width)
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -455,6 +455,12 @@ class InvoiceFillerGUI:
                     font_size = self.get_font_size_for_field(field_name)
                     script_lines.append(f'c.setFont(font_name, {font_size})')
                     
+                    # Set text color for specific fields
+                    if field_name in ["numero_de_facture", "date"]:
+                        script_lines.append('c.setFillColorRGB(1, 1, 1)  # White text')
+                    else:
+                        script_lines.append('c.setFillColorRGB(0, 0, 0)  # Black text')
+                    
                     # Handle text wrapping for libelle fields
                     if field_name.startswith("libelle_") and len(value) > 35:
                         # Split long libelle text into multiple lines
@@ -516,10 +522,10 @@ class InvoiceFillerGUI:
             "reste_a_payer", "en_votre_aimable_reglement_de_la_somme_de"
         ]
         
-        # Check if field is in table or after table (size 8)
+        # Check if field is in table or after table (size 10)
         for pattern in table_and_after_fields:
             if field_name.startswith(pattern) or field_name == pattern:
-                return 8
+                return 10
                 
         # Check if field is before table (size 12)  
         if field_name in before_table_fields:
