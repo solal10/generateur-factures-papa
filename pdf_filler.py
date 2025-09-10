@@ -613,9 +613,9 @@ class InvoiceFillerGUI:
                             script_lines.append(f'text_width = c.stringWidth(text_with_euro, font_name, {font_size})')
                             script_lines.append(f'c.drawRightString({x} + 80, page_height - {y}, text_with_euro)')
                         elif field_name == "en_votre_aimable_reglement_de_la_somme_de":
-                            # Special formatting for confirmation field: bold, navy blue, with ,00 and euro
+                            # Special formatting for confirmation field: bold, hex color #262b57, with ,00 and euro
                             script_lines.append(f'c.setFont(font_name + "-Bold", {font_size})')
-                            script_lines.append(f'c.setFillColorRGB(0, 0, 0.5)  # Navy blue color')
+                            script_lines.append(f'c.setFillColorRGB(0.149, 0.169, 0.341)  # Hex color #262b57')
                             script_lines.append(f'formatted_amount = "{escaped_value},00 €"')
                             script_lines.append(f'c.drawString({x}, page_height - {y}, formatted_amount)')
                             script_lines.append(f'c.setFont(font_name, {font_size})  # Reset to normal font')
@@ -693,7 +693,7 @@ class InvoiceFillerGUI:
             "acompte_percu": (465, 572),
             "reste_a_payer": (465, 610),
             "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
-            "additions_speciales": (50, 690),  # Bottom left of page for special additions
+            "additions_speciales": (50, 621),  # Bottom left of page for special additions
         }
         
         # Add line items positions - fill from top to bottom
