@@ -581,8 +581,8 @@ class InvoiceFillerGUI:
                         script_lines.append(f'text = "{escaped_value}"')
                         
                         if field_name == "additions_speciales":
-                            # Special formatting for additions_speciales: bold, hex color #262b57, 14pt font size
-                            script_lines.append(f'c.setFont(font_name + "-Bold", 14)')
+                            # Special formatting for additions_speciales: bold, hex color #262b57, 13pt font size
+                            script_lines.append(f'c.setFont(font_name + "-Bold", 13)')
                             script_lines.append(f'c.setFillColorRGB(0.149, 0.169, 0.341)  # Hex color #262b57')
                             script_lines.append(f'max_width = 500  # Wider width for additions speciales field')
                         else:
@@ -701,7 +701,7 @@ class InvoiceFillerGUI:
             "acompte_percu": (465, 572),
             "reste_a_payer": (465, 610),
             "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
-            "additions_speciales": (49, 655),  # Bottom left of page for special additions (50-1px left, 657-2px up)
+            "additions_speciales": (48, 655),  # Bottom left of page for special additions (49-1px left)
         }
         
         # Add line items positions - fill from top to bottom
