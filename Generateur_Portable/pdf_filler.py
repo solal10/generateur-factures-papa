@@ -9,7 +9,7 @@ class InvoiceFillerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Générateur de Factures - Global Solutions")
-        self.root.geometry("900x1000")
+        self.root.geometry("900x800")
         
         # Create main frame with scrollbar
         main_frame = ttk.Frame(root)
@@ -142,26 +142,34 @@ class InvoiceFillerGUI:
         root.bind("<KeyPress>", _on_key)
         
     def create_field_group(self, parent, title, fields_config):
-        """Create a group of fields with a title"""
-        group_frame = ttk.LabelFrame(parent, text=title, padding=10)
-        group_frame.pack(fill=tk.X, pady=(0, 15))
+        """Create a group of fields with a title - compact layout"""
+        group_frame = ttk.LabelFrame(parent, text=title, padding=8)
+        group_frame.pack(fill=tk.X, pady=(0, 10))
         
-        for field_name, label_text, default_value, width in fields_config:
-            row_frame = ttk.Frame(group_frame)
-            row_frame.pack(fill=tk.X, pady=2)
+        # Create a grid layout for better space utilization
+        for i, (field_name, label_text, default_value, width) in enumerate(fields_config):
+            row = i // 2  # Two fields per row
+            col = i % 2   # Alternate between columns
             
-            label = ttk.Label(row_frame, text=label_text + ":", width=25, anchor="w")
-            label.pack(side=tk.LEFT, padx=(0, 10))
+            # Create frame for each field pair
+            if col == 0:
+                row_frame = ttk.Frame(group_frame)
+                row_frame.pack(fill=tk.X, pady=1)
+                row_frame.grid_columnconfigure(1, weight=1)  # First field expandable
+                row_frame.grid_columnconfigure(3, weight=1)  # Second field expandable
+            
+            label = ttk.Label(row_frame, text=label_text + ":", width=18, anchor="w")
+            label.grid(row=0, column=col*2, padx=(0, 5), sticky="w")
             
             var = tk.StringVar(value=default_value)
             
             # Special styling for header fields (invoice number and date)
             if field_name in ["numero_de_facture", "date"]:
-                entry = tk.Entry(row_frame, textvariable=var, width=width, 
+                entry = tk.Entry(row_frame, textvariable=var, width=width//2, 
                                bg="white", fg="black", insertbackground="black")
             else:
-                entry = ttk.Entry(row_frame, textvariable=var, width=width)
-            entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                entry = ttk.Entry(row_frame, textvariable=var, width=width//2)
+            entry.grid(row=0, column=col*2+1, padx=(0, 15 if col == 0 else 0), sticky="ew")
             
             self.fields[field_name] = var
     
@@ -310,83 +318,86 @@ class InvoiceFillerGUI:
             prix_var.trace_add("write", calculator)
     
     def create_totals_fields(self, parent):
-        """Create totals and tax fields aligned with Total column"""
-        totals_frame = ttk.LabelFrame(parent, text="Totaux et Taxes", padding=10)
-        totals_frame.pack(fill=tk.X, pady=(0, 15))
+        """Create totals and tax fields - compact layout"""
+        totals_frame = ttk.LabelFrame(parent, text="Totaux et Taxes", padding=8)
+        totals_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Create a frame to align with the table's Total column
+        # Create main container with grid layout
         container_frame = ttk.Frame(totals_frame)
         container_frame.pack(fill=tk.X)
         
-        # Add spacer to align with Total column (same as table layout)
-        spacer_frame = ttk.Frame(container_frame)
-        spacer_frame.pack(side=tk.LEFT)
-        spacer_frame.configure(width=535)  # Width to align with Total column (265+80+95+95 = 535)
+        # Left side for tax fields, right side for totals
+        left_frame = ttk.Frame(container_frame)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
-        # Right-aligned fields frame for the totals
-        fields_frame = ttk.Frame(container_frame)
-        fields_frame.pack(side=tk.RIGHT, padx=(10, 0))
+        right_frame = ttk.Frame(container_frame)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
-        # Totals fields 
-        totals_config = [
+        # Left column - Tax and calculation fields
+        left_fields = [
             ("total_hors_taxe", "Total H.T."),
             ("tva_5_5_pourcent", "TVA 5.5%"),
             ("tva_10_pourcent", "TVA 10%"),
             ("tva_20_pourcent", "TVA 20%"),
+        ]
+        
+        # Right column - Final totals and confirmation
+        right_fields = [
             ("total_net_de_taxes", "Total Net de Taxes"),
             ("acompte_percu", "Acompte perçu"),
             ("reste_a_payer", "Reste à payer"),
             ("en_votre_aimable_reglement_de_la_somme_de", "Confirmation somme"),
-            ("additions_speciales", "Additions spéciales"),
         ]
         
-        for field_name, label_text in totals_config:
-            row_frame = ttk.Frame(fields_frame)
-            row_frame.pack(fill=tk.X, pady=2)
+        # Create left column fields
+        for field_name, label_text in left_fields:
+            row_frame = ttk.Frame(left_frame)
+            row_frame.pack(fill=tk.X, pady=1)
             
-            label = ttk.Label(row_frame, text=label_text + ":", width=20, anchor="e")
-            label.pack(side=tk.LEFT, padx=(0, 10))
+            label = ttk.Label(row_frame, text=label_text + ":", width=15, anchor="w")
+            label.pack(side=tk.LEFT, padx=(0, 5))
             
             var = tk.StringVar()
+            entry = ttk.Entry(row_frame, textvariable=var, width=12, justify="right")
+            entry.pack(side=tk.RIGHT)
             
-            # Special handling for additions_speciales field - make it larger
-            if field_name == "additions_speciales":
-                # Create a text widget instead of entry for multiline support
-                from tkinter import Text, Scrollbar
-                text_frame = ttk.Frame(row_frame)
-                text_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-                
-                text_widget = Text(text_frame, height=3, width=40, wrap=tk.WORD, font=("TkDefaultFont", 9))
-                scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
-                text_widget.configure(yscrollcommand=scrollbar.set)
-                
-                text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-                scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-                
-                # Create a wrapper to make Text widget behave like StringVar
-                class TextVar:
-                    def __init__(self, text_widget):
-                        self.text_widget = text_widget
-                    def get(self):
-                        return self.text_widget.get("1.0", tk.END).strip()
-                    def set(self, value):
-                        self.text_widget.delete("1.0", tk.END)
-                        self.text_widget.insert("1.0", value)
-                
-                var = TextVar(text_widget)
-                entry = text_widget  # For the formatters to work
-            else:
-                entry = ttk.Entry(row_frame, textvariable=var, width=15, justify="right")
-                entry.pack(side=tk.RIGHT)
-            
-            # Add formatting for all monetary fields
-            if field_name in ["acompte_percu", "tva_5_5_pourcent", "tva_10_pourcent", "tva_20_pourcent", 
-                             "total_hors_taxe", "total_net_de_taxes", "reste_a_payer"]:
+            # Add formatting for monetary fields
+            if field_name in ["total_hors_taxe", "tva_5_5_pourcent", "tva_10_pourcent", "tva_20_pourcent"]:
                 def make_formatter(field_var):
                     def format_on_focus_out(event):
                         try:
                             value = field_var.get().strip()
-                            # Remove existing euro symbol if present
+                            value = value.replace(' €', '').replace('€', '').strip()
+                            if value and value != "0":
+                                formatted_value = f"{float(value):.2f} €"
+                                field_var.set(formatted_value)
+                        except ValueError:
+                            pass
+                    return format_on_focus_out
+                
+                formatter = make_formatter(var)
+                entry.bind("<FocusOut>", formatter)
+            
+            self.fields[field_name] = var
+        
+        # Create right column fields
+        for field_name, label_text in right_fields:
+            row_frame = ttk.Frame(right_frame)
+            row_frame.pack(fill=tk.X, pady=1)
+            
+            label = ttk.Label(row_frame, text=label_text + ":", width=18, anchor="w")
+            label.pack(side=tk.LEFT, padx=(0, 5))
+            
+            var = tk.StringVar()
+            entry = ttk.Entry(row_frame, textvariable=var, width=12, justify="right")
+            entry.pack(side=tk.RIGHT)
+            
+            # Add formatting for monetary fields
+            if field_name in ["total_net_de_taxes", "acompte_percu", "reste_a_payer"]:
+                def make_formatter(field_var):
+                    def format_on_focus_out(event):
+                        try:
+                            value = field_var.get().strip()
                             value = value.replace(' €', '').replace('€', '').strip()
                             if value and value != "0":
                                 formatted_value = f"{float(value):.2f} €"
@@ -399,12 +410,11 @@ class InvoiceFillerGUI:
                 entry.bind("<FocusOut>", formatter)
             
             # Special formatting for confirmation somme field
-            if field_name == "en_votre_aimable_reglement_de_la_somme_de":
+            elif field_name == "en_votre_aimable_reglement_de_la_somme_de":
                 def make_confirmation_formatter(field_var):
                     def format_on_focus_out(event):
                         try:
                             value = field_var.get().strip()
-                            # Remove existing formatting if present
                             value = value.replace(',00 €', '').replace(' €', '').replace('€', '').replace(',00', '').strip()
                             if value and value != "0":
                                 formatted_value = f"{float(value):.0f},00 €"
@@ -417,6 +427,37 @@ class InvoiceFillerGUI:
                 entry.bind("<FocusOut>", confirmation_formatter)
             
             self.fields[field_name] = var
+        
+        # Add the special additions field below
+        additions_frame = ttk.Frame(totals_frame)
+        additions_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        label = ttk.Label(additions_frame, text="Additions spéciales:", width=18, anchor="w")
+        label.pack(side=tk.LEFT, padx=(0, 5))
+        
+        # Create a text widget for multiline support
+        from tkinter import Text, Scrollbar
+        text_frame = ttk.Frame(additions_frame)
+        text_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        
+        text_widget = Text(text_frame, height=2, wrap=tk.WORD, font=("TkDefaultFont", 9))
+        scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Create a wrapper to make Text widget behave like StringVar
+        class TextVar:
+            def __init__(self, text_widget):
+                self.text_widget = text_widget
+            def get(self):
+                return self.text_widget.get("1.0", tk.END).strip()
+            def set(self, value):
+                self.text_widget.delete("1.0", tk.END)
+                self.text_widget.insert("1.0", value)
+        
+        self.fields["additions_speciales"] = TextVar(text_widget)
     
     def update_totals(self):
         """Update total HT automatically"""
@@ -701,7 +742,7 @@ class InvoiceFillerGUI:
             "acompte_percu": (465, 572),
             "reste_a_payer": (465, 610),
             "en_votre_aimable_reglement_de_la_somme_de": (295, 639),
-            "additions_speciales": (47, 655),  # Bottom left of page for special additions (48-1px left)
+            "additions_speciales": (47.5, 655),  # Bottom left of page for special additions (47+0.5px right)
         }
         
         # Add line items positions - fill from top to bottom
